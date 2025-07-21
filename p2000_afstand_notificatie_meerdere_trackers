@@ -1,0 +1,64 @@
+
+blueprint:
+  name: P2000 afstand notificatie (meerdere trackers)
+  description: Stuur notificatie als een P2000-melding binnen X km is van een van je apparaten
+  domain: automation
+  input:
+    p2000_melding_helper:
+      name: P2000 melding helper
+      selector:
+        entity:
+          domain: input_text
+    device_trackers:
+      name: Apparaten (device_trackers)
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: device_tracker
+    notify_service:
+      name: Notificatie service
+      selector:
+        text:
+    afstand_drempel:
+      name: Afstandsdrempel (km)
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: km
+          mode: slider
+
+trigger:
+  - platform: state
+    entity_id: !input p2000_melding_helper
+
+variables:
+  melding: "{{ states(trigger.entity_id) }}"
+  geocode_url: "https://nominatim.openstreetmap.org/search?format=json&q={{ melding | urlencode }}"
+  trackers: !input device_trackers
+  drempel: !input afstand_drempel
+  notify: !input notify_service
+
+action:
+  - service: rest_command.p2000_geocode
+    data:
+      url: "{{ geocode_url }}"
+  - delay: "00:00:02"
+  - variables:
+      lat2: "{{ state_attr('sensor.p2000_locatie', 'lat') | float(0) }}"
+      lon2: "{{ state_attr('sensor.p2000_locatie', 'lon') | float(0) }}"
+  - choose:
+      - conditions: >
+          {% for tracker in trackers %}
+            {% set lat1 = state_attr(tracker, 'latitude') | float(0) %}
+            {% set lon1 = state_attr(tracker, 'longitude') | float(0) %}
+            {% if distance(lat1, lon1, lat2, lon2) < drempel %}
+              true
+            {% endif %}
+          {% endfor %}
+        sequence:
+          - service: "{{ notify }}"
+            data:
+              message: "🚨 P2000 melding binnen {{ drempel }} km: {{ melding }}"
+mode: single
