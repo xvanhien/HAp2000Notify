@@ -46,8 +46,8 @@ action:
       url: "{{ geocode_url }}"
   - delay: "00:00:02"
   - variables:
-      lat2: "{{ state_attr('sensor.p2000_locatie', 'lat') | float(0) }}"
-      lon2: "{{ state_attr('sensor.p2000_locatie', 'lon') | float(0) }}"
+      lat2: "{{ state_attr('sensor.p2000_lat', 'lat') | float(0) }}"
+      lon2: "{{ state_attr('sensor.p2000_lon', 'lon') | float(0) }}"
   - choose:
       - conditions: >
           {% for tracker in trackers %}
